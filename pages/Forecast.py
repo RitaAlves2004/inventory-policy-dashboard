@@ -101,8 +101,8 @@ st.markdown("""
 
 # ================= LOGOS =================
 
-LOGO_1 = r"C:\Users\madel\OneDrive\Ambiente de Trabalho\4 ano\GCA\Projeto 2026\FIM\Uni_Logo.png"
-LOGO_2 = r"C:\Users\madel\OneDrive\Ambiente de Trabalho\4 ano\GCA\Projeto 2026\FIM\LTP_Logo.png"
+LOGO_1 = "Uni_Logo.png"
+LOGO_2 = "LTP_Logo.png"
 
 st.markdown('<div class="dashboard-header">', unsafe_allow_html=True)
 
@@ -127,7 +127,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # ================= CONFIG =================
 
-FOLDER = r"C:\Users\madel\OneDrive\Ambiente de Trabalho\4 ano\GCA\Projeto 2026\parquet_filtered_final"
+FOLDER = "."
 
 FORECAST_CSV = os.path.join(
     FOLDER,
