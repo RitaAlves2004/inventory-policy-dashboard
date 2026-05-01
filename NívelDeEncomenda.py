@@ -4,7 +4,7 @@ import numpy as np
 from collections import defaultdict
 from statistics import NormalDist
 
-folder = r"C:\Users\madel\OneDrive\Ambiente de Trabalho\4 ano\GCA\Projeto 2026\parquet_filtered_final"
+folder = "."
 
 start_date = pd.Timestamp("2023-06-01")
 service_level_candidates = np.round(np.arange(0.90, 0.991, 0.01), 2)
