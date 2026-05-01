@@ -115,9 +115,9 @@ FOLDER = "."
 
 POLICIES = {
     "As Is": ("master_stock_forecast.parquet", "AsIsMetrics.csv"),
-    "Smin-Smax Policy": ("PolíticaSminSmáx.csv", "PolíticaSminSmáx_KPIs.csv"),
-    "Reorder Level Policy": ("PolíticaNívelDeEncomenda.csv", "PolíticaNívelDeEncomenda_KPIs.csv"),
-    "Order Cycle Policy": ("PolíticaCicloDeEncomenda.csv", "PolíticaCicloDeEncomenda_KPIs.csv"),
+    "Smin-Smax Policy": ("PolíticaSminSmáx.parquet", "PolíticaSminSmáx_KPIs.csv"),
+    "Reorder Level Policy": ("PolíticaNívelDeEncomenda.parquet", "PolíticaNívelDeEncomenda_KPIs.csv"),
+    "Order Cycle Policy": ("PolíticaCicloDeEncomenda.parquet", "PolíticaCicloDeEncomenda_KPIs.csv"),
 }
 
 KPI_ORDER = [
@@ -135,6 +135,11 @@ KPI_ORDER = [
 def load_csv(path):
     return pd.read_csv(path, sep=";", decimal=",", encoding="utf-8-sig")
 
+@st.cache_data
+def load_data(path):
+    if path.endswith(".parquet"):
+        return pd.read_parquet(path)
+    return pd.read_csv(path, sep=";", decimal=",", encoding="utf-8-sig")
 
 def normalize_kpis(df):
     rename_map = {
@@ -549,12 +554,13 @@ if policy_name == "As Is":
     df["date"] = pd.to_datetime(df["date"].astype(str), format="%Y%m%d", errors="coerce")
     df = df[df["date"] >= pd.Timestamp("2023-06-01")]
 else:
-    df = load_csv(simulation_path).rename(columns={
+    df = load_data(simulation_path).rename(columns={
         "SKU": "sku",
         "Date": "date",
         "Demand": "demand",
         "SOH End": "soh_final",
     })
+
     df["date"] = pd.to_datetime(df["date"], dayfirst=True, errors="coerce")
 
 df = df.dropna(subset=["date"])
