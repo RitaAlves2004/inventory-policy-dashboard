@@ -1,0 +1,2 @@
+﻿Service Target (%);Probability Beta Service Level >= Target (%);Probability Alpha Service Level >= Target (%);Number of Simulations;Policy Tested
+95,0;100,0;100,0;100;Order Cycle Policy - Fixed Parameters
