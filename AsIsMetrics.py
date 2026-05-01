@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-folder = r"C:\Users\madel\OneDrive\Ambiente de Trabalho\4 ano\GCA\Projeto 2026\parquet_filtered_final"
+folder = "."
 
 stock_file = "master_stock_forecast.parquet"
 cost_file = "20260210_CustosProdutos.xlsx"
