@@ -598,7 +598,18 @@ if not sku_kpis.empty:
 
     value = pd.to_numeric(row.get("Average Inventory Level", 0), errors="coerce")
     value = 0 if pd.isna(value) else value
+    col_extra1, col_extra2, col_extra3 = st.columns(3)
+
+with col_extra1:
+    value = pd.to_numeric(row.get("Average Inventory Level", 0), errors="coerce")
+    value = 0 if pd.isna(value) else value
     st.metric("Average Inventory Level", f"{value:,.2f}")
+
+with col_extra2:
+    st.metric("ABC Class", row.get("ABC Class", "N/A"))
+
+with col_extra3:
+    st.metric("XYZ Class", row.get("XYZ Class", "N/A"))
 
 else:
     st.warning("No KPI data found for this SKU.")
