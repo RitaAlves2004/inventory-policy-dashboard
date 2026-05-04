@@ -177,8 +177,6 @@ def build_global_kpi_comparison(abc_filter="Total SKUs"):
         temp = set(temp)
         common_skus = temp if common_skus is None else common_skus & temp
 
-    st.write("Common SKUs used:", len(common_skus))
-
     if abc_filter != "Total SKUs":
         asis_path = os.path.join(FOLDER, POLICIES["As Is"][1])
         asis_df = normalize_kpis(load_csv(asis_path))
@@ -241,8 +239,6 @@ def build_global_kpi_comparison(abc_filter="Total SKUs"):
             sim_df = sim_df[sim_df["sku"].isin(common_skus)]
         else:
             sim_df = sim_df[sim_df["sku"].isin(allowed_skus)]
-
-        st.write(f"{policy} SKUs after filter:", sim_df["sku"].nunique())
 
         total_soh = sim_df["SOH End"].sum()
         total_demand = sim_df["Demand"].sum()
