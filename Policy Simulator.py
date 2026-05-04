@@ -607,7 +607,12 @@ if not sku_kpis.empty:
         st.metric("Average Inventory Level", f"{value:,.2f}")
 
     with col2:
-        abc_value = str(row.get("ABC Class", "N/A"))
+        abc_value = row.get("ABC Class")
+
+        if pd.isna(abc_value) or abc_value == "":
+            abc_value = "N/A"
+        else:
+            abc_value = str(abc_value)
         st.markdown(f"""
         <div data-testid="stMetric">
             <div data-testid="stMetricLabel">ABC Class</div>
