@@ -114,7 +114,6 @@ KPI_ORDER = [
     "Average Inventory Level",
     "Stock Coverage (days)",
 ]
-
 # ================= FUNCTIONS =================
 
 @st.cache_data
@@ -158,6 +157,7 @@ def normalize_kpis(df):
 
 
 def build_global_kpi_comparison(abc_filter="Total SKUs"):
+    
     rows = []
     allowed_skus = None
 
@@ -194,7 +194,7 @@ def build_global_kpi_comparison(abc_filter="Total SKUs"):
 
         if not os.path.exists(kpis_path) or not os.path.exists(simulation_path):
             continue
-
+        
         df = normalize_kpis(load_csv(kpis_path))
 
         if abc_filter == "Total SKUs":
@@ -297,6 +297,197 @@ def render_global_kpi_table(df):
         </table>
     </div>
     """, unsafe_allow_html=True)
+
+
+def score_lower(s):
+    return pd.Series([1] * len(s), index=s.index) if s.max() == s.min() else (s.max() - s) / (s.max() - s.min())
+
+
+def score_higher(s):
+    return pd.Series([1] * len(s), index=s.index) if s.max() == s.min() else (s - s.min()) / (s.max() - s.min())
+
+
+def render_monte_carlo_analysis():
+    mc_path = os.path.join(FOLDER, "MonteCarlo_LeadTime_AllPolicies.csv")
+
+    if not os.path.exists(mc_path):
+        st.warning(f"Monte Carlo file not found: {mc_path}")
+        return
+
+    mc_df = load_csv(mc_path)
+
+    required_cols = [
+        "Policy",
+        "Simulation",
+        "Stock Cost",
+        "Beta Service Level (%)",
+        "Average Inventory Level"
+    ]
+
+    missing_cols = [c for c in required_cols if c not in mc_df.columns]
+
+    if missing_cols:
+        st.error("Missing Monte Carlo columns: " + ", ".join(missing_cols))
+        return
+
+    for col in [
+        "Stock Cost",
+        "Stock Out Rate (%)",
+        "Alpha Service Level (%)",
+        "Beta Service Level (%)",
+        "Average Inventory Level",
+        "Stock Coverage (days)"
+    ]:
+        if col in mc_df.columns:
+            mc_df[col] = pd.to_numeric(mc_df[col], errors="coerce")
+
+    mc_df = mc_df.dropna(subset=[
+        "Policy",
+        "Stock Cost",
+        "Beta Service Level (%)",
+        "Average Inventory Level"
+    ])
+
+    if mc_df.empty:
+        st.warning("Monte Carlo file has no valid data.")
+        return
+
+    summary_df = (
+        mc_df.groupby("Policy", as_index=False)
+        .agg(
+            stock_cost=("Stock Cost", "mean"),
+            beta_service_level=("Beta Service Level (%)", "mean"),
+            average_inventory_level=("Average Inventory Level", "mean"),
+            stock_coverage=("Stock Coverage (days)", "mean")
+        )
+    )
+
+    summary_df["Inventory Score"] = score_lower(summary_df["average_inventory_level"])
+    summary_df["Cost Score"] = score_lower(summary_df["stock_cost"])
+    summary_df["Service Score"] = score_higher(summary_df["beta_service_level"])
+
+    summary_df["Trade-off Score"] = summary_df[
+        ["Inventory Score", "Cost Score", "Service Score"]
+    ].mean(axis=1)
+
+    best_policy = summary_df.loc[summary_df["Trade-off Score"].idxmax()]
+
+    st.markdown("---")
+    st.markdown("""
+    <h2 style="
+        text-align:center;
+        color:#061243;
+        font-weight:900;
+        margin-top:30px;
+        margin-bottom:30px;">
+        Monte Carlo Simulation
+    </h2>
+    """, unsafe_allow_html=True)
+
+    col_left, col_right = st.columns([1.35, 1])
+
+    with col_left:
+        fig = px.scatter(
+            mc_df,
+            x="Average Inventory Level",
+            y="Beta Service Level (%)",
+            color="Policy",
+            symbol="Policy",
+            size="Stock Cost",
+            size_max=10,
+            title="Monte Carlo Scenarios: Inventory vs Service Level",
+            hover_data={
+                "Policy": True,
+                "Simulation": True,
+                "Stock Cost": ":,.2f",
+                "Average Inventory Level": ":,.2f",
+                "Beta Service Level (%)": ":,.2f",
+                "Stock Coverage (days)": ":,.2f",
+            }
+        )
+
+        fig.update_traces(
+            opacity=0.65,
+            marker=dict(
+                line=dict(width=0.5, color="white")
+            )
+        )
+
+        fig.update_layout(
+            xaxis_title="Average Inventory Level",
+            yaxis_title="β Service Level (%)",
+            height=650,
+            margin=dict(l=70, r=100, t=90, b=100),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.25,
+                xanchor="center",
+                x=0.5
+            ),
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+            title_font=dict(size=22, color="#061243"),
+            font=dict(color="#061243")
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col_right:
+        st.markdown("### Monte Carlo Insights")
+
+        st.info(
+            f"**Best Trade-off:** {best_policy['Policy']}  \n\n"
+            f"Best average balance between inventory level, stock cost and β service level."
+        )
+
+        cards = [
+            (
+                "Lowest Stock Cost",
+                summary_df.loc[summary_df["stock_cost"].idxmin()],
+                "stock_cost",
+                "Stock Cost",
+                "#061243"
+            ),
+            (
+                "Highest Service Level",
+                summary_df.loc[summary_df["beta_service_level"].idxmax()],
+                "beta_service_level",
+                "Beta Service Level (%)",
+                "#008080"
+            ),
+            (
+                "Lowest Inventory Level",
+                summary_df.loc[summary_df["average_inventory_level"].idxmin()],
+                "average_inventory_level",
+                "Average Inventory Level",
+                "#ff7f32"
+            ),
+        ]
+
+        html = ""
+
+        for title, row, metric_col, metric_label, color in cards:
+            suffix = "%" if metric_label == "Beta Service Level (%)" else ""
+
+            html += f"""
+            <div style="
+                background:white;
+                padding:22px;
+                border-radius:14px;
+                border-left:6px solid {color};
+                margin-bottom:18px;
+                box-shadow:0 8px 20px rgba(6,18,67,.08);">
+                <h4 style="color:{color};">{title}</h4>
+                <p><b>{row['Policy']}</b></p>
+                <p>{metric_label}: {row[metric_col]:,.2f}{suffix}</p>
+            </div>
+            """
+
+        st.markdown(html, unsafe_allow_html=True)
+
+    with st.expander("Show Monte Carlo simulation results"):
+        st.dataframe(mc_df, use_container_width=True)
 
 
 # ================= SIDEBAR =================
@@ -585,3 +776,7 @@ with st.expander("Show simulation data"):
         st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.info("No simulation data available for this policy.")
+
+# ================= MONTE CARLO ANALYSIS =================
+
+render_monte_carlo_analysis()
