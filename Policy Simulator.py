@@ -93,65 +93,41 @@ def load_data(path):
         return pd.read_parquet(path)
     return pd.read_csv(path, sep=";", decimal=",", encoding="utf-8-sig")
 
-
 def normalize_kpis(df):
-    df = df.copy()
-    df.columns = df.columns.str.strip()
-
     rename_map = {
         "SKU": "sku",
-        "sku": "sku",
-
         "ABC_Class": "ABC Class",
         "ABC Class": "ABC Class",
+
+        "XYZ Class": "XYZ Class",
+        "XYZ_Class": "XYZ Class",
+        "xyz": "XYZ Class",
 
         "Total Cost": "Total Cost",
         "total_cost": "Total Cost",
 
-        "Stock Cost": "Stock Cost",
-        "stock_cost": "Stock Cost",
-        "total_holding_cost": "Stock Cost",
-        "custo_stock_total": "Stock Cost",
-
         "Stockout Rate": "Stock Out Rate (%)",
-        "Stock Out Rate": "Stock Out Rate (%)",
-        "Stock Out Rate (%)": "Stock Out Rate (%)",
-        "stock_out_rate": "Stock Out Rate (%)",
-        "stock_out_rate_pct": "Stock Out Rate (%)",
-        "stock_out_rate_%": "Stock Out Rate (%)",
-
         "Alpha Service Level": "Alpha Service Level (%)",
-        "Alpha Service Level (%)": "Alpha Service Level (%)",
-        "alpha_service_level": "Alpha Service Level (%)",
-        "alpha_service_level_%": "Alpha Service Level (%)",
-
         "Beta Service Level": "Beta Service Level (%)",
-        "Beta Service Level (%)": "Beta Service Level (%)",
+        "stock_out_rate_pct": "Stock Out Rate (%)",
+        "stock_out_rate": "Stock Out Rate (%)",
+        "alpha_service_level": "Alpha Service Level (%)",
         "beta_service_level": "Beta Service Level (%)",
-        "beta_service_level_%": "Beta Service Level (%)",
-
-        "Average Inventory Level": "Average Inventory Level",
         "average_inventory_level": "Average Inventory Level",
-        "average_inventory_level_quantidade": "Average Inventory Level",
-
-        "Stock Coverage (days)": "Stock Coverage (days)",
+        "Average Inventory Level": "Average Inventory Level",
         "stock_coverage_days": "Stock Coverage (days)",
-        "stock_coverage_dias": "Stock Coverage (days)",
+        "Stock Coverage (days)": "Stock Coverage (days)",
     }
 
     df = df.rename(columns=rename_map)
 
-    if "Total Cost" not in df.columns and "Stock Cost" in df.columns:
-        df["Total Cost"] = df["Stock Cost"]
+    cols = ["sku", "ABC Class", "XYZ Class"] + KPI_ORDER
 
-    required_cols = ["sku", "ABC Class"] + KPI_ORDER
-
-    for col in required_cols:
+    for col in cols:
         if col not in df.columns:
             df[col] = pd.NA
 
-    return df[required_cols]
-
+    return df[cols]
 
 def build_global_kpi_comparison(abc_filter="Total SKUs"):
     rows = []
