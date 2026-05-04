@@ -94,29 +94,43 @@ def load_data(path):
     return pd.read_csv(path, sep=";", decimal=",", encoding="utf-8-sig")
 
 def normalize_kpis(df):
+    df = df.copy()
+    df.columns = df.columns.str.strip()
+
     rename_map = {
         "SKU": "sku",
+        "sku": "sku",
+
         "ABC_Class": "ABC Class",
         "ABC Class": "ABC Class",
 
-        "XYZ Class": "XYZ Class",
         "XYZ_Class": "XYZ Class",
+        "XYZ Class": "XYZ Class",
         "xyz": "XYZ Class",
+        "XYZ": "XYZ Class",
 
         "Total Cost": "Total Cost",
         "total_cost": "Total Cost",
 
         "Stockout Rate": "Stock Out Rate (%)",
-        "Alpha Service Level": "Alpha Service Level (%)",
-        "Beta Service Level": "Beta Service Level (%)",
-        "stock_out_rate_pct": "Stock Out Rate (%)",
+        "Stock Out Rate": "Stock Out Rate (%)",
+        "Stock Out Rate (%)": "Stock Out Rate (%)",
         "stock_out_rate": "Stock Out Rate (%)",
+        "stock_out_rate_pct": "Stock Out Rate (%)",
+
+        "Alpha Service Level": "Alpha Service Level (%)",
+        "Alpha Service Level (%)": "Alpha Service Level (%)",
         "alpha_service_level": "Alpha Service Level (%)",
+
+        "Beta Service Level": "Beta Service Level (%)",
+        "Beta Service Level (%)": "Beta Service Level (%)",
         "beta_service_level": "Beta Service Level (%)",
-        "average_inventory_level": "Average Inventory Level",
+
         "Average Inventory Level": "Average Inventory Level",
-        "stock_coverage_days": "Stock Coverage (days)",
+        "average_inventory_level": "Average Inventory Level",
+
         "Stock Coverage (days)": "Stock Coverage (days)",
+        "stock_coverage_days": "Stock Coverage (days)",
     }
 
     df = df.rename(columns=rename_map)
@@ -449,6 +463,25 @@ for path, label in [(simulation_path, "Simulation"), (kpis_path, "KPI")]:
 
 sku_kpis_all = normalize_kpis(load_csv(kpis_path))
 
+asis_kpis_path = os.path.join(FOLDER, "AsIsMetrics.csv")
+
+if os.path.exists(asis_kpis_path):
+    asis_ref = normalize_kpis(load_csv(asis_kpis_path))[["sku", "ABC Class", "XYZ Class"]]
+    asis_ref["sku"] = asis_ref["sku"].astype(str)
+
+    sku_kpis_all["sku"] = sku_kpis_all["sku"].astype(str)
+
+    sku_kpis_all = sku_kpis_all.merge(
+        asis_ref,
+        on="sku",
+        how="left",
+        suffixes=("", "_asis")
+    )
+
+    for col in ["ABC Class", "XYZ Class"]:
+        sku_kpis_all[col] = sku_kpis_all[col].fillna(sku_kpis_all[f"{col}_asis"])
+        sku_kpis_all = sku_kpis_all.drop(columns=[f"{col}_asis"])
+
 if policy_name == "As Is":
     df = pd.read_parquet(simulation_path).rename(columns={"stock_on_hand": "soh_final"})
     df["date"] = pd.to_datetime(df["date"].astype(str), format="%Y%m%d", errors="coerce")
@@ -558,7 +591,6 @@ st.subheader(f"SKU: {selected_sku} | Policy: {policy_name}")
 if not sku_kpis.empty:
     row = sku_kpis.iloc[0]
 
-    # ===== PRIMEIRA LINHA =====
     cols = st.columns(5)
 
     metrics = [
@@ -574,7 +606,6 @@ if not sku_kpis.empty:
         value = 0 if pd.isna(value) else value
         col.metric(metric, f"{value:,.2f}{suffix}")
 
-    # ===== SEGUNDA LINHA (COM ABC + XYZ) =====
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -583,12 +614,9 @@ if not sku_kpis.empty:
         st.metric("Average Inventory Level", f"{value:,.2f}")
 
     with col2:
-        abc_value = row.get("ABC Class")
+        abc_value = row.get("ABC Class", "N/A")
+        abc_value = "N/A" if pd.isna(abc_value) or str(abc_value).strip() == "" else str(abc_value).strip()
 
-        if pd.isna(abc_value) or abc_value == "":
-            abc_value = "N/A"
-        else:
-            abc_value = str(abc_value)
         st.markdown(f"""
         <div data-testid="stMetric">
             <div data-testid="stMetricLabel">ABC Class</div>
@@ -597,7 +625,9 @@ if not sku_kpis.empty:
         """, unsafe_allow_html=True)
 
     with col3:
-        xyz_value = str(row.get("XYZ Class", "N/A"))
+        xyz_value = row.get("XYZ Class", "N/A")
+        xyz_value = "N/A" if pd.isna(xyz_value) or str(xyz_value).strip() == "" else str(xyz_value).strip()
+
         st.markdown(f"""
         <div data-testid="stMetric">
             <div data-testid="stMetricLabel">XYZ Class</div>
