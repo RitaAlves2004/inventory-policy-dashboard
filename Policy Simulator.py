@@ -94,43 +94,29 @@ def load_data(path):
     return pd.read_csv(path, sep=";", decimal=",", encoding="utf-8-sig")
 
 def normalize_kpis(df):
-    df = df.copy()
-    df.columns = df.columns.str.strip()
-
     rename_map = {
         "SKU": "sku",
-        "sku": "sku",
-
         "ABC_Class": "ABC Class",
         "ABC Class": "ABC Class",
 
-        "XYZ_Class": "XYZ Class",
         "XYZ Class": "XYZ Class",
+        "XYZ_Class": "XYZ Class",
         "xyz": "XYZ Class",
-        "XYZ": "XYZ Class",
 
         "Total Cost": "Total Cost",
         "total_cost": "Total Cost",
 
         "Stockout Rate": "Stock Out Rate (%)",
-        "Stock Out Rate": "Stock Out Rate (%)",
-        "Stock Out Rate (%)": "Stock Out Rate (%)",
-        "stock_out_rate": "Stock Out Rate (%)",
-        "stock_out_rate_pct": "Stock Out Rate (%)",
-
         "Alpha Service Level": "Alpha Service Level (%)",
-        "Alpha Service Level (%)": "Alpha Service Level (%)",
-        "alpha_service_level": "Alpha Service Level (%)",
-
         "Beta Service Level": "Beta Service Level (%)",
-        "Beta Service Level (%)": "Beta Service Level (%)",
+        "stock_out_rate_pct": "Stock Out Rate (%)",
+        "stock_out_rate": "Stock Out Rate (%)",
+        "alpha_service_level": "Alpha Service Level (%)",
         "beta_service_level": "Beta Service Level (%)",
-
-        "Average Inventory Level": "Average Inventory Level",
         "average_inventory_level": "Average Inventory Level",
-
-        "Stock Coverage (days)": "Stock Coverage (days)",
+        "Average Inventory Level": "Average Inventory Level",
         "stock_coverage_days": "Stock Coverage (days)",
+        "Stock Coverage (days)": "Stock Coverage (days)",
     }
 
     df = df.rename(columns=rename_map)
