@@ -93,30 +93,59 @@ def load_data(path):
         return pd.read_parquet(path)
     return pd.read_csv(path, sep=";", decimal=",", encoding="utf-8-sig")
 
+def clean_number_series(s):
+    return (
+        s.astype(str)
+        .str.replace("€", "", regex=False)
+        .str.replace(" ", "", regex=False)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+        .pipe(pd.to_numeric, errors="coerce")
+    )
+
+
 def normalize_kpis(df):
+    df = df.copy()
+    df.columns = df.columns.str.strip()
+
     rename_map = {
         "SKU": "sku",
+        "sku": "sku",
+
         "ABC_Class": "ABC Class",
         "ABC Class": "ABC Class",
 
         "XYZ Class": "XYZ Class",
         "XYZ_Class": "XYZ Class",
         "xyz": "XYZ Class",
+        "XYZ": "XYZ Class",
 
         "Total Cost": "Total Cost",
+        "Total cost": "Total Cost",
+        "TOTAL COST": "Total Cost",
+        "total cost": "Total Cost",
+        "Total_Cost": "Total Cost",
         "total_cost": "Total Cost",
 
         "Stockout Rate": "Stock Out Rate (%)",
-        "Alpha Service Level": "Alpha Service Level (%)",
-        "Beta Service Level": "Beta Service Level (%)",
+        "Stock Out Rate": "Stock Out Rate (%)",
+        "Stock Out Rate (%)": "Stock Out Rate (%)",
         "stock_out_rate_pct": "Stock Out Rate (%)",
         "stock_out_rate": "Stock Out Rate (%)",
+
+        "Alpha Service Level": "Alpha Service Level (%)",
+        "Alpha Service Level (%)": "Alpha Service Level (%)",
         "alpha_service_level": "Alpha Service Level (%)",
+
+        "Beta Service Level": "Beta Service Level (%)",
+        "Beta Service Level (%)": "Beta Service Level (%)",
         "beta_service_level": "Beta Service Level (%)",
-        "average_inventory_level": "Average Inventory Level",
+
         "Average Inventory Level": "Average Inventory Level",
-        "stock_coverage_days": "Stock Coverage (days)",
+        "average_inventory_level": "Average Inventory Level",
+
         "Stock Coverage (days)": "Stock Coverage (days)",
+        "stock_coverage_days": "Stock Coverage (days)",
     }
 
     df = df.rename(columns=rename_map)
@@ -126,6 +155,18 @@ def normalize_kpis(df):
     for col in cols:
         if col not in df.columns:
             df[col] = pd.NA
+
+    numeric_cols = [
+        "Total Cost",
+        "Stock Out Rate (%)",
+        "Alpha Service Level (%)",
+        "Beta Service Level (%)",
+        "Average Inventory Level",
+        "Stock Coverage (days)"
+    ]
+
+    for col in numeric_cols:
+        df[col] = clean_number_series(df[col])
 
     return df[cols]
 
