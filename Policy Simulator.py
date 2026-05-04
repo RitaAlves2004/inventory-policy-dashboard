@@ -581,6 +581,8 @@ st.subheader(f"SKU: {selected_sku} | Policy: {policy_name}")
 
 if not sku_kpis.empty:
     row = sku_kpis.iloc[0]
+
+    # ===== PRIMEIRA LINHA =====
     cols = st.columns(5)
 
     metrics = [
@@ -596,20 +598,31 @@ if not sku_kpis.empty:
         value = 0 if pd.isna(value) else value
         col.metric(metric, f"{value:,.2f}{suffix}")
 
-    value = pd.to_numeric(row.get("Average Inventory Level", 0), errors="coerce")
-    value = 0 if pd.isna(value) else value
-    col_extra1, col_extra2, col_extra3 = st.columns(3)
+    # ===== SEGUNDA LINHA (COM ABC + XYZ) =====
+    col1, col2, col3 = st.columns(3)
 
-    with col_extra1:
+    with col1:
         value = pd.to_numeric(row.get("Average Inventory Level", 0), errors="coerce")
         value = 0 if pd.isna(value) else value
         st.metric("Average Inventory Level", f"{value:,.2f}")
 
-    with col_extra2:
-        st.metric("ABC Class", row.get("ABC Class", "N/A"))
+    with col2:
+        abc_value = str(row.get("ABC Class", "N/A"))
+        st.markdown(f"""
+        <div data-testid="stMetric">
+            <div data-testid="stMetricLabel">ABC Class</div>
+            <div data-testid="stMetricValue">{abc_value}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    with col_extra3:
-        st.metric("XYZ Class", row.get("XYZ Class", "N/A"))
+    with col3:
+        xyz_value = str(row.get("XYZ Class", "N/A"))
+        st.markdown(f"""
+        <div data-testid="stMetric">
+            <div data-testid="stMetricLabel">XYZ Class</div>
+            <div data-testid="stMetricValue">{xyz_value}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 else:
     st.warning("No KPI data found for this SKU.")
