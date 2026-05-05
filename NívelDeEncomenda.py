@@ -4,10 +4,10 @@ import numpy as np
 from collections import defaultdict
 from statistics import NormalDist
 
-folder = "."
+folder = r"C:\Users\madel\OneDrive\Ambiente de Trabalho\4 ano\GCA\Projeto 2026\parquet_filtered_final"
 
 start_date = pd.Timestamp("2023-06-01")
-service_level_candidates = np.round(np.arange(0.90, 0.991, 0.01), 2)
+service_level_candidates = np.round(np.arange(0.60, 0.991, 0.01), 2)
 z_candidates = {sl: NormalDist().inv_cdf(sl) for sl in service_level_candidates}
 
 transport_cost_per_unit = 0.15
@@ -256,8 +256,11 @@ def simulate_sku_fast(sku, sku_df, service_level, return_rows=False):
         ordered = 0.0
         order_triggered = False
 
-        if is_review_day[i] and stock_position < order_up_to_level_S[i]:
-            lead_time_days = max(1, int(np.ceil(avg_lt[i])))
+        if stock_position < order_up_to_level_S[i]:
+
+            sampled_lead_time = np.random.normal(avg_lt[i], std_lt[i])
+            lead_time_days = max(1, int(np.round(sampled_lead_time)))
+
             need = order_up_to_level_S[i] - stock_position
             ordered = float(np.ceil(max(need, moq_units[i])))
             order_triggered = True
@@ -300,6 +303,7 @@ def simulate_sku_fast(sku, sku_df, service_level, return_rows=False):
                 "DDLT mean": int(DDLT_mean[i]),
                 "DDLT sigma": float(DDLT_sigma[i]),
                 "Inventory Holding Cost": round(inventory_holding_cost_day, 6),
+                "Order Total Cost": round(order_total_cost, 6),
                 "avg LT Real": round(avg_lt[i], 2),
                 "std LT Real": round(std_lt[i], 2),
                 "Alpha Service Level": float(service_level),
@@ -370,6 +374,7 @@ numeric_cols_2_decimals = [
     "std LT Real",
     "DDLT sigma",
     "Inventory Holding Cost",
+    "Order Total Cost",
     "Alpha Service Level",
     "z"]
 
@@ -416,6 +421,7 @@ dashboard_kpis_df = (
     final_df.groupby("SKU", as_index=False)
     .agg(
         stock_cost=("Inventory Holding Cost", "sum"),
+        order_total_cost=("Order Total Cost", "sum"),
         total_demand=("Demand", "sum"),
         total_stockout=("Stockout", "sum"),
         stockout_days=("Stockout", lambda x: (x > 0).sum()),
@@ -436,20 +442,27 @@ dashboard_kpis_df["Stock Coverage (days)"] = np.where(
     dashboard_kpis_df["avg_daily_demand"] > 0,
     dashboard_kpis_df["average_inventory_level"] / dashboard_kpis_df["avg_daily_demand"],0)
 
+dashboard_kpis_df["total_cost"] = (
+    dashboard_kpis_df["stock_cost"] + dashboard_kpis_df["order_total_cost"]
+)
+
 dashboard_kpis_df = dashboard_kpis_df.rename(columns={
-    "stock_cost": "Stock Cost",
+    "total_cost": "Total Cost",
     "average_inventory_level": "Average Inventory Level",
-    "beta_service_level": "Beta Service Level"})
+    "beta_service_level": "Beta Service Level"
+})
 
 dashboard_kpis_df = dashboard_kpis_df[
     [
         "SKU",
-        "Stock Cost",
+        "Total Cost",
         "Stockout Rate",
         "Alpha Service Level",
         "Beta Service Level",
         "Average Inventory Level",
-        "Stock Coverage (days)"]].round(2)
+        "Stock Coverage (days)"
+    ]
+].round(2)
 
 # ========================= EXPORTAR =========================
 

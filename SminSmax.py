@@ -5,14 +5,16 @@ from statistics import NormalDist
 
 # ========================= CONFIGURAÇÃO =========================
 
-folder = "."
+folder = r"C:\Users\anatd\Downloads\FIM\parquet_filtered"
 
 start_date = pd.Timestamp("2023-06-01")
-service_level_candidates = np.round(np.arange(0.90, 0.991, 0.01), 2)
+service_level_candidates = np.round(np.arange(0.60, 0.991, 0.01), 2)
 z_candidates = {sl: NormalDist().inv_cdf(sl) for sl in service_level_candidates}
 
 transport_cost_per_unit = 0.15
 WACC = 0.02
+
+RANDOM_SEED = 42
 
 stock_file    = "master_stock_forecast.parquet"
 review_file   = "20260210_review_days.parquet"
@@ -53,7 +55,8 @@ review["review_day"] = pd.to_numeric(review["review_day"], errors="coerce")
 for col in ["avg_lead_time_real", "std_lead_time_real"]:
     leadtimes[col] = pd.to_numeric(
         leadtimes[col].astype(str).str.replace(",", ".", regex=False).str.strip(),
-        errors="coerce")
+        errors="coerce"
+    )
 
 costs["custo"] = pd.to_numeric(costs["custo"], errors="coerce").fillna(0)
 policy["moq_units"] = pd.to_numeric(policy["moq_units"], errors="coerce").fillna(1).clip(lower=1)
@@ -73,7 +76,9 @@ leadtimes = (
     .groupby("sku", as_index=False)
     .agg(
         avg_lead_time_real=("avg_lead_time_real", "mean"),
-        std_lead_time_real=("std_lead_time_real", "mean")))
+        std_lead_time_real=("std_lead_time_real", "mean")
+    )
+)
 
 leadtimes["std_lead_time_real"] = leadtimes["std_lead_time_real"].fillna(0)
 leadtimes = leadtimes[leadtimes["avg_lead_time_real"] > 0]
@@ -84,7 +89,8 @@ costs = (
     costs[["sku", "custo"]]
     .dropna(subset=["sku"])
     .groupby("sku", as_index=False)
-    .agg(unit_cost=("custo", "mean")))
+    .agg(unit_cost=("custo", "mean"))
+)
 
 costs["transport_cost_per_unit"] = transport_cost_per_unit
 costs["total_unit_cost"] = costs["unit_cost"] + costs["transport_cost_per_unit"]
@@ -93,7 +99,8 @@ policy = (
     policy[["sku", "moq_units"]]
     .dropna(subset=["sku"])
     .groupby("sku", as_index=False)
-    .agg(moq_units=("moq_units", "max")))
+    .agg(moq_units=("moq_units", "max"))
+)
 
 policy["moq_units"] = policy["moq_units"].fillna(1).clip(lower=1)
 
@@ -105,22 +112,27 @@ stock_daily = (
         forecast=("forecast", "sum"),
         demand=("demand", "sum"),
         stock_on_hand=("stock_on_hand", "max"),
-        forecast_error=("forecast_error", "sum"))
+        forecast_error=("forecast_error", "sum")
+    )
     .sort_values(["sku", "date"])
-    .reset_index(drop=True))
+    .reset_index(drop=True)
+)
 
 sku_activity = stock_daily.groupby("sku", as_index=False).agg(
     total_forecast=("forecast", "sum"),
-    total_demand=("demand", "sum"))
+    total_demand=("demand", "sum")
+)
 
 valid_skus = sku_activity.loc[
     (sku_activity["total_forecast"] != 0) | (sku_activity["total_demand"] != 0),
-    "sku"]
+    "sku"
+]
 
 stock_daily = stock_daily[stock_daily["sku"].isin(valid_skus)].copy()
 
 forecast_std_df = stock_daily.groupby("sku", as_index=False).agg(
-    std_forecast=("forecast_error", "std"))
+    std_forecast=("forecast_error", "std")
+)
 
 forecast_std_df["std_forecast"] = forecast_std_df["std_forecast"].fillna(0)
 
@@ -128,7 +140,8 @@ initial_stock = (
     stock_daily.sort_values(["sku", "date"])
     .groupby("sku", as_index=False)
     .first()[["sku", "stock_on_hand"]]
-    .rename(columns={"stock_on_hand": "initial_soh"}))
+    .rename(columns={"stock_on_hand": "initial_soh"})
+)
 
 stock_daily = (
     stock_daily
@@ -136,14 +149,16 @@ stock_daily = (
     .merge(initial_stock, on="sku", how="left")
     .merge(leadtimes, on="sku", how="inner")
     .merge(costs, on="sku", how="left")
-    .merge(policy, on="sku", how="left"))
+    .merge(policy, on="sku", how="left")
+)
 
 stock_daily = stock_daily.fillna({
     "std_forecast": 0,
     "initial_soh": 0,
     "unit_cost": 0,
     "transport_cost_per_unit": transport_cost_per_unit,
-    "moq_units": 1})
+    "moq_units": 1
+})
 
 stock_daily["moq_units"] = stock_daily["moq_units"].clip(lower=1)
 stock_daily["total_unit_cost"] = stock_daily["unit_cost"] + stock_daily["transport_cost_per_unit"]
@@ -157,7 +172,8 @@ review_clean["review_day"] = review_clean["review_day"].astype(int)
 review_days_map = (
     review_clean.groupby("sku")["review_day"]
     .apply(lambda x: set(x.astype(int).unique()))
-    .to_dict())
+    .to_dict()
+)
 
 all_skus = set(stock_daily["sku"].unique())
 
@@ -169,35 +185,42 @@ review_days_str = pd.DataFrame({
     "sku": list(review_days_map.keys()),
     "review_days": [
         ",".join(map(str, sorted(days)))
-        for days in review_days_map.values()]})
+        for days in review_days_map.values()
+    ]
+})
 
 stock_daily = stock_daily.merge(review_days_str, on="sku", how="left")
 stock_daily["review_days"] = stock_daily["review_days"].fillna("2")
 
 stock_daily["is_review_day"] = [
     int(day) in review_days_map.get(sku, {2})
-    for sku, day in zip(stock_daily["sku"], stock_daily["current_day"])]
+    for sku, day in zip(stock_daily["sku"], stock_daily["current_day"])
+]
 
 # ========================= DIAS ATÉ PRÓXIMO REVIEW =========================
 
 review_clean_full = pd.DataFrame([
     {"sku": sku, "review_day": day}
     for sku, days in review_days_map.items()
-    for day in days])
+    for day in days
+])
 
 review_expanded = stock_daily[["sku", "date", "current_day"]].merge(
     review_clean_full,
     on="sku",
-    how="left")
+    how="left"
+)
 
 review_expanded["days_until_review"] = (
-    review_expanded["review_day"] - review_expanded["current_day"]) % 7
+    review_expanded["review_day"] - review_expanded["current_day"]
+) % 7
 
 review_expanded["days_until_review"] = review_expanded["days_until_review"].replace(0, 7)
 
 review_period_df = (
     review_expanded.groupby(["sku", "date"], as_index=False)
-    .agg(review_period_days=("days_until_review", "min")))
+    .agg(review_period_days=("days_until_review", "min"))
+)
 
 stock_daily = stock_daily.merge(review_period_df, on=["sku", "date"], how="left")
 stock_daily["review_period_days"] = stock_daily["review_period_days"].fillna(7).astype(int)
@@ -224,7 +247,8 @@ def precompute_sku_arrays(sku_df):
         is_review_day=sku_df["is_review_day"].to_numpy(bool),
         current_day=sku_df["current_day"].to_numpy(int),
         prefix_forecast=np.r_[0, np.cumsum(sku_df["forecast"].to_numpy(float))],
-        n_rows=len(sku_df))
+        n_rows=len(sku_df)
+    )
 
 def compute_smin_smax(arrs, z):
     n = arrs["n_rows"]
@@ -277,8 +301,12 @@ def simulate_policy(
     cs_max=None,
     ss_min_arr=None,
     ss_max_arr=None,
-    n_arr=None
+    n_arr=None,
+    rng=None
 ):
+    if rng is None:
+        rng = np.random.default_rng(RANDOM_SEED)
+
     n = arrs["n_rows"]
 
     demands = arrs["demands"]
@@ -298,7 +326,11 @@ def simulate_policy(
     review_periods = arrs["review_periods"]
 
     date0 = pd.Timestamp(dates[0])
-    max_days = n + int(np.ceil(avg_lead_times.max())) + 5
+
+    max_possible_lt = np.ceil(avg_lead_times.max() + 5 * std_lead_times.max())
+    max_possible_lt = max(1, int(max_possible_lt))
+
+    max_days = n + max_possible_lt + 30
     delivery_arr = np.zeros(max_days, dtype=float)
 
     soh_inicio = arrs["initial_soh"]
@@ -318,15 +350,21 @@ def simulate_policy(
 
         stock_position = soh_inicio + pipeline_open
         ordered = 0.0
+        lt_days = 0
 
         if is_review_day[i]:
-            lt_days = max(1, int(np.ceil(avg_lead_times[i])))
-
             if stock_position <= Smin[i]:
                 necessidade = max(0.0, Smax[i] - stock_position)
 
                 if necessidade > 0:
                     ordered = max(necessidade, moq_units[i])
+
+                    lt_sample = rng.normal(
+                        loc=avg_lead_times[i],
+                        scale=max(0.0, std_lead_times[i])
+                    )
+
+                    lt_days = max(1, int(np.ceil(lt_sample)))
                     delivery_off = day_offset + lt_days
 
                     if delivery_off < max_days:
@@ -368,16 +406,19 @@ def simulate_policy(
                 "Smin": int(Smin[i]),
                 "Smax": int(Smax[i]),
                 "Inventory Holding Cost": round(inventory_value, 2),
+                "Order Total Cost": round(order_total_cost, 2),
                 "Review Days": review_days[i],
                 "Is Review Day": bool(is_review_day[i]),
                 "Current Day": int(current_day[i]),
                 "Review Period Days": int(review_periods[i]),
                 "avg LT Real": round(avg_lead_times[i], 2),
                 "std LT Real": round(std_lead_times[i], 2),
+                "LT Simulado": int(lt_days),
                 "n": int(n_arr[i]),
                 "MOQ": int(np.round(moq_units[i])),
                 "Alpha Service Level": float(service_level),
-                "z": float(z)})
+                "z": float(z)
+            })
 
         soh_inicio = soh_final
 
@@ -386,7 +427,8 @@ def simulate_policy(
         "z": z,
         "stockout_total": stockout_total,
         "inventory_value_total": inventory_value_total,
-        "order_total_cost_total": order_total_cost_total}
+        "order_total_cost_total": order_total_cost_total
+    }
 
     return pd.DataFrame(rows) if return_rows else None, metrics
 
@@ -407,6 +449,8 @@ for idx_sku, (sku, sku_base_df) in enumerate(stock_daily.groupby("sku", sort=Tru
     best_metrics = None
     best_sl_data = None
 
+    sku_seed = RANDOM_SEED + idx_sku
+
     for service_level in service_level_candidates:
         z = z_candidates[service_level]
 
@@ -418,7 +462,9 @@ for idx_sku, (sku, sku_base_df) in enumerate(stock_daily.groupby("sku", sort=Tru
             Smax,
             return_rows=False,
             service_level=service_level,
-            z=z)
+            z=z,
+            rng=np.random.default_rng(sku_seed)
+        )
 
         if best_metrics is None or (
             metrics["stockout_total"] < best_metrics["stockout_total"] or (
@@ -447,7 +493,9 @@ for idx_sku, (sku, sku_base_df) in enumerate(stock_daily.groupby("sku", sort=Tru
         cs_max=cs_max,
         ss_min_arr=ss_min_a,
         ss_max_arr=ss_max_a,
-        n_arr=n_arr)
+        n_arr=n_arr,
+        rng=np.random.default_rng(sku_seed)
+    )
 
     best_results.append(best_sim)
 
@@ -457,7 +505,8 @@ for idx_sku, (sku, sku_base_df) in enumerate(stock_daily.groupby("sku", sort=Tru
         "optimal_z": best_metrics["z"],
         "stockout_total": best_metrics["stockout_total"],
         "inventory_value_total": best_metrics["inventory_value_total"],
-        "order_total_cost_total": best_metrics["order_total_cost_total"]})
+        "order_total_cost_total": best_metrics["order_total_cost_total"]
+    })
 
 print("Simulação concluída. A construir dataframe final...")
 
@@ -472,25 +521,30 @@ beta_by_sku = (
     final_df.groupby("SKU", as_index=False)
     .agg(
         total_demand=("Demand", "sum"),
-        total_stockout=("stockout", "sum")))
+        total_stockout=("stockout", "sum")
+    )
+)
 
 beta_by_sku["beta_service_level"] = np.where(
     beta_by_sku["total_demand"] > 0,
     (1 - beta_by_sku["total_stockout"] / beta_by_sku["total_demand"]) * 100,
-    100)
+    100
+)
 
 beta_by_sku["beta_service_level"] = beta_by_sku["beta_service_level"].round(2)
 
 final_df = final_df.merge(
     beta_by_sku[["SKU", "beta_service_level"]],
     on="SKU",
-    how="left")
+    how="left"
+)
 
 optimization_summary_df = optimization_summary_df.merge(
     beta_by_sku,
     left_on="sku",
     right_on="SKU",
-    how="left")
+    how="left"
+)
 
 # ========================= KPIs POR SKU =========================
 
@@ -498,6 +552,7 @@ kpis_sku = (
     final_df.groupby("SKU", as_index=False)
     .agg(
         custo_stock_total=("Inventory Holding Cost", "sum"),
+        order_total_cost=("Order Total Cost", "sum"),
         total_demand=("Demand", "sum"),
         total_stockout=("stockout", "sum"),
         dias_com_stockout=("stockout", lambda x: (x > 0).sum()),
@@ -505,30 +560,40 @@ kpis_sku = (
         average_inventory_level_quantidade=("SOH End", "mean"),
         avg_daily_demand=("Demand", "mean"),
         service_level_otimo=("Alpha Service Level", "first"),
-        z_otimo=("z", "first")))
+        z_otimo=("z", "first")
+    )
+)
+
+kpis_sku["total_cost"] = (
+    kpis_sku["custo_stock_total"] + kpis_sku["order_total_cost"]
+)
 
 kpis_sku["stock_out_rate_%"] = np.where(
     kpis_sku["total_demand"] > 0,
     (kpis_sku["total_stockout"] / kpis_sku["total_demand"]) * 100,
-    0)
+    0
+)
 
 kpis_sku["alpha_service_level_%"] = np.where(
     kpis_sku["dias_total"] > 0,
     (1 - kpis_sku["dias_com_stockout"] / kpis_sku["dias_total"]) * 100,
-    100)
+    100
+)
 
 kpis_sku["beta_service_level_%"] = np.where(
     kpis_sku["total_demand"] > 0,
     (1 - kpis_sku["total_stockout"] / kpis_sku["total_demand"]) * 100,
-    100)
+    100
+)
 
 kpis_sku["stock_coverage_dias"] = np.where(
     kpis_sku["avg_daily_demand"] > 0,
     kpis_sku["average_inventory_level_quantidade"] / kpis_sku["avg_daily_demand"],
-    np.nan)
+    np.nan
+)
 
 cols_round = [
-    "custo_stock_total",
+    "total_cost",
     "stock_out_rate_%",
     "alpha_service_level_%",
     "beta_service_level_%",
@@ -536,41 +601,46 @@ cols_round = [
     "avg_daily_demand",
     "stock_coverage_dias",
     "service_level_otimo",
-    "z_otimo"]
+    "z_otimo"
+]
 
 for col in cols_round:
     kpis_sku[col] = pd.to_numeric(kpis_sku[col], errors="coerce").round(2)
 
 kpis_sku = kpis_sku.rename(columns={
-    "custo_stock_total": "Stock Cost",
+    "total_cost": "Total Cost",
     "stock_out_rate_%": "Stockout Rate",
     "alpha_service_level_%": "Alpha Service Level",
     "beta_service_level_%": "Beta Service Level",
     "average_inventory_level_quantidade": "Average Inventory Level",
-    "stock_coverage_dias": "Stock Coverage (days)"})
+    "stock_coverage_dias": "Stock Coverage (days)"
+})
 
 kpis_sku = kpis_sku[[
     "SKU",
-    "Stock Cost",
+    "Total Cost",
     "Stockout Rate",
     "Alpha Service Level",
     "Beta Service Level",
     "Average Inventory Level",
-    "Stock Coverage (days)"]]
+    "Stock Coverage (days)"
+]]
 
 # ========================= ORDEM DAS COLUNAS FINAL_DF =========================
 
 final_df = final_df[[
-    "SKU","Date",
-    "Forecast","Demand","Stock Position","SOH Start","Orders Placed","Orders Delivered",
-    "SOH End","stockout","Cycle Stock min",
-    "Cycle Stock max","SS min","SS max","Smin","Smax","Inventory Holding Cost",
-    "Review Days","Is Review Day",
-    "Current Day","Review Period Days","avg LT Real",
-    "std LT Real","n","MOQ","Alpha Service Level","z"]].sort_values(["SKU", "Date"])
+    "SKU", "Date",
+    "Forecast", "Demand", "Stock Position", "SOH Start", "Orders Placed", "Orders Delivered",
+    "SOH End", "stockout", "Cycle Stock min",
+    "Cycle Stock max", "SS min", "SS max", "Smin", "Smax", "Inventory Holding Cost","Order Total Cost",
+    "Review Days", "Is Review Day",
+    "Current Day", "Review Period Days", "avg LT Real",
+    "std LT Real", "LT Simulado", "n", "MOQ", "Alpha Service Level", "z"
+]].sort_values(["SKU", "Date"])
 
 final_df = final_df.rename(columns={
-    "stockout": "Stockout"})
+    "stockout": "Stockout"
+})
 
 # ========================= FORMATAÇÃO =========================
 
@@ -578,7 +648,9 @@ decimal_cols = [
     "Inventory Holding Cost",
     "avg LT Real",
     "std LT Real",
-    "Alpha Service Level"]
+    "Alpha Service Level",
+    "Order Total Cost"
+]
 
 for col in decimal_cols:
     final_df[col] = pd.to_numeric(final_df[col], errors="coerce").round(2)
@@ -599,14 +671,16 @@ final_df.to_csv(
     index=False,
     encoding="utf-8-sig",
     sep=";",
-    decimal=",")
+    decimal=","
+)
 
 kpis_sku.to_csv(
     kpis_output_path,
     index=False,
     encoding="utf-8-sig",
     sep=";",
-    decimal=",")
+    decimal=","
+)
 
 # ========================= RESUMO =========================
 

@@ -6,7 +6,6 @@ import plotly.express as px
 st.set_page_config(page_title="Policy Simulator", layout="wide")
 
 # ================= STYLE =================
-
 st.markdown("""
 <style>
 .stApp{background:linear-gradient(180deg,#f8fafc 0%,#eef3f8 100%)}
@@ -33,22 +32,55 @@ table.global-kpi-table{width:100%;border-collapse:separate;border-spacing:0;over
 .global-kpi-table tr:nth-child(even) td{background:#edf7f7}
 .global-kpi-table tr:nth-child(odd) td{background:white}
 .global-kpi-table th:last-child,.global-kpi-table td:last-child{border-right:none}
-.chart-container{background:linear-gradient(180deg,#ffffff 0%,#f7fbfb 100%);padding:24px 26px 18px 26px;border-radius:26px;border:1px solid rgba(6,18,67,.10);box-shadow:0 14px 34px rgba(6,18,67,.10),0 2px 8px rgba(6,18,67,.05);margin-bottom:28px}
-.chart-container:hover{box-shadow:0 18px 42px rgba(6,18,67,.15),0 4px 12px rgba(6,18,67,.08)}
-.chart-frame-title{color:#061243;font-size:18px;font-weight:900;margin-bottom:4px}
-div[data-testid="stExpander"]{background:linear-gradient(180deg,#ffffff 0%,#f8fcfc 100%)!important;border-radius:20px!important;border:1px solid rgba(6,18,67,.10)!important;overflow:hidden!important;box-shadow:0 10px 26px rgba(6,18,67,.08)!important;margin-bottom:16px!important}
-.stDataFrame{border-radius:22px!important;overflow:hidden!important;border:1px solid rgba(6,18,67,.10)!important;box-shadow:0 12px 28px rgba(6,18,67,.08)!important;background:white!important}
-div.stButton > button{width:100%;height:58px;border-radius:16px;border:none;background:linear-gradient(135deg,#061243 0%,#008080 100%);color:white;font-size:18px;font-weight:800;box-shadow:0 8px 20px rgba(6,18,67,.18);transition:all .25s ease}
-div.stButton > button:hover{transform:translateY(-3px);box-shadow:0 12px 24px rgba(6,18,67,.28);background:linear-gradient(135deg,#008080 0%,#061243 100%);color:white}
-div.stButton > button:focus{border:2px solid #00b3b3!important;color:white!important}
-div.stButton > button[kind="primary"]{background:linear-gradient(135deg,#00a6a6 0%,#061243 100%);border:2px solid #00d4d4}
+.chart-container{
+background: linear-gradient(180deg, #ffffff 0%, #f7fbfb 100%);
+padding: 24px 26px 18px 26px;
+border-radius: 26px;
+border: 1px solid rgba(6,18,67,.10);
+box-shadow: 0 14px 34px rgba(6,18,67,.10), 0 2px 8px rgba(6,18,67,.05);
+margin-bottom: 28px;
+}
+.chart-container:hover{
+box-shadow: 0 18px 42px rgba(6,18,67,.15), 0 4px 12px rgba(6,18,67,.08);
+}
+.chart-frame-title{
+color:#061243;
+font-size:18px;
+font-weight:900;
+margin-bottom:4px;
+}
+.chart-frame-subtitle{
+color:#008080;
+font-size:13px;
+font-weight:700;
+margin-bottom:12px;
+}
+div[data-testid="stExpander"]{
+background: linear-gradient(180deg,#ffffff 0%,#f8fcfc 100%) !important;
+border-radius:20px !important;
+border:1px solid rgba(6,18,67,.10) !important;
+overflow:hidden !important;
+box-shadow:0 10px 26px rgba(6,18,67,.08) !important;
+margin-bottom:16px !important;
+}
+div[data-testid="stExpander"] details summary{
+padding:14px 18px !important;
+font-weight:850 !important;
+color:#061243 !important;
+}
+.stDataFrame{
+border-radius:22px !important;
+overflow:hidden !important;
+border:1px solid rgba(6,18,67,.10) !important;
+box-shadow:0 12px 28px rgba(6,18,67,.08) !important;
+background:white !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
 # ================= LOGOS =================
-
-LOGO_1 = "Uni_Logo.png"
-LOGO_2 = "LTP_Logo.png"
+LOGO_1 = r"C:\Users\anatd\Downloads\FIM\Uni_Logo.png"
+LOGO_2 = r"C:\Users\anatd\Downloads\FIM\LTP_Logo.png"
 
 st.markdown('<div class="dashboard-header">', unsafe_allow_html=True)
 c1, c2, c3 = st.columns([1, 1, 7])
@@ -61,8 +93,7 @@ c3.markdown("""
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ================= CONFIG =================
-
-FOLDER = "."
+FOLDER = r"C:\Users\anatd\Downloads\FIM\parquet_filtered"
 
 POLICIES = {
     "As Is": ("master_stock_forecast.parquet", "AsIsMetrics.csv"),
@@ -72,7 +103,7 @@ POLICIES = {
 }
 
 KPI_ORDER = [
-    "Stock Cost",
+    "Total Cost",
     "Stock Out Rate (%)",
     "Alpha Service Level (%)",
     "Beta Service Level (%)",
@@ -81,7 +112,6 @@ KPI_ORDER = [
 ]
 
 # ================= FUNCTIONS =================
-
 @st.cache_data
 def load_csv(path):
     return pd.read_csv(path, sep=";", decimal=",", encoding="utf-8-sig")
@@ -98,35 +128,55 @@ def normalize_kpis(df):
     rename_map = {
         "SKU": "sku",
         "ABC_Class": "ABC Class",
+        "XYZ_Class": "XYZ Class",
+        "XYZ Class": "XYZ Class",
+
+        "Total Cost": "Total Cost",
+        "total_cost": "Total Cost",
+        "Total_Cost": "Total Cost",
+
         "Stockout Rate": "Stock Out Rate (%)",
-        "Alpha Service Level": "Alpha Service Level (%)",
-        "Beta Service Level": "Beta Service Level (%)",
-        "total_holding_cost": "Stock Cost",
         "stock_out_rate_pct": "Stock Out Rate (%)",
         "stock_out_rate_%": "Stock Out Rate (%)",
         "stock_out_rate": "Stock Out Rate (%)",
+
+        "Alpha Service Level": "Alpha Service Level (%)",
         "alpha_service_level": "Alpha Service Level (%)",
         "alpha_service_level_%": "Alpha Service Level (%)",
+
+        "Beta Service Level": "Beta Service Level (%)",
         "beta_service_level": "Beta Service Level (%)",
         "beta_service_level_%": "Beta Service Level (%)",
+
         "average_inventory_level": "Average Inventory Level",
         "average_inventory_level_quantidade": "Average Inventory Level",
+
         "stock_coverage_days": "Stock Coverage (days)",
         "stock_coverage_dias": "Stock Coverage (days)",
-        "custo_stock_total": "Stock Cost",
-        "stock_cost": "Stock Cost",
     }
 
     df = df.rename(columns=rename_map)
-    cols = ["sku", "ABC Class"] + KPI_ORDER
+    df = df.loc[:, ~df.columns.duplicated()]
+
+    cols = ["sku", "ABC Class", "XYZ Class"] + KPI_ORDER
     return df[[c for c in cols if c in df.columns]]
 
 
-def build_global_kpi_comparison(abc_filter="Total SKUs"):
-    
+def get_filtered_skus_from_classification(classification_df, abc_filter, xyz_filter):
+    filtered = classification_df.copy()
+
+    if abc_filter != "Total SKUs":
+        filtered = filtered[filtered["ABC Class"] == abc_filter]
+
+    if xyz_filter != "All XYZ":
+        filtered = filtered[filtered["XYZ Class"] == xyz_filter]
+
+    return set(filtered["sku"].dropna().astype(str))
+
+
+def build_global_kpi_comparison(abc_filter="Total SKUs", xyz_filter="All XYZ"):
     rows = []
     allowed_skus = None
-
     common_skus = None
 
     for p, (sim_file, _) in POLICIES.items():
@@ -136,23 +186,41 @@ def build_global_kpi_comparison(abc_filter="Total SKUs"):
             continue
 
         if p == "As Is":
-            temp = pd.read_parquet(path)["sku"].dropna().unique()
+            temp = pd.read_parquet(path)["sku"].dropna().astype(str).unique()
         else:
-            temp = load_data(path)["SKU"].dropna().unique()
+            temp = load_data(path)["SKU"].dropna().astype(str).unique()
 
         temp = set(temp)
         common_skus = temp if common_skus is None else common_skus & temp
 
-    if abc_filter != "Total SKUs":
+    if common_skus is None:
+        common_skus = set()
+
+    if abc_filter != "Total SKUs" or xyz_filter != "All XYZ":
         asis_path = os.path.join(FOLDER, POLICIES["As Is"][1])
         asis_df = normalize_kpis(load_csv(asis_path))
 
-        allowed_skus = asis_df.loc[
-            asis_df["ABC Class"].astype(str).str.upper() == abc_filter,
-            "sku"
-        ].dropna().unique()
+        if "sku" not in asis_df.columns:
+            return pd.DataFrame()
 
-        allowed_skus = set(allowed_skus) & common_skus
+        asis_df["sku"] = asis_df["sku"].astype(str)
+
+        if "ABC Class" not in asis_df.columns:
+            asis_df["ABC Class"] = ""
+
+        if "XYZ Class" not in asis_df.columns:
+            asis_df["XYZ Class"] = ""
+
+        asis_df["ABC Class"] = asis_df["ABC Class"].astype(str).str.strip().str.upper()
+        asis_df["XYZ Class"] = asis_df["XYZ Class"].astype(str).str.strip().str.upper()
+
+        allowed_skus = get_filtered_skus_from_classification(
+            asis_df,
+            abc_filter,
+            xyz_filter
+        )
+
+        allowed_skus = allowed_skus & common_skus
 
     for policy, (simulation_file, kpis_file) in POLICIES.items():
         kpis_path = os.path.join(FOLDER, kpis_file)
@@ -160,10 +228,15 @@ def build_global_kpi_comparison(abc_filter="Total SKUs"):
 
         if not os.path.exists(kpis_path) or not os.path.exists(simulation_path):
             continue
-        
+
         df = normalize_kpis(load_csv(kpis_path))
 
-        if abc_filter == "Total SKUs":
+        if "sku" not in df.columns:
+            continue
+
+        df["sku"] = df["sku"].astype(str)
+
+        if abc_filter == "Total SKUs" and xyz_filter == "All XYZ":
             df = df[df["sku"].isin(common_skus)]
         else:
             df = df[df["sku"].isin(allowed_skus)]
@@ -201,7 +274,9 @@ def build_global_kpi_comparison(abc_filter="Total SKUs"):
                 errors="coerce"
             )
 
-        if abc_filter == "Total SKUs":
+        sim_df["sku"] = sim_df["sku"].astype(str)
+
+        if abc_filter == "Total SKUs" and xyz_filter == "All XYZ":
             sim_df = sim_df[sim_df["sku"].isin(common_skus)]
         else:
             sim_df = sim_df[sim_df["sku"].isin(allowed_skus)]
@@ -209,13 +284,10 @@ def build_global_kpi_comparison(abc_filter="Total SKUs"):
         total_soh = sim_df["SOH End"].sum()
         total_demand = sim_df["Demand"].sum()
 
-        global_stock_coverage = (
-            total_soh / total_demand
-            if total_demand > 0 else 0
-        )
+        global_stock_coverage = total_soh / total_demand if total_demand > 0 else 0
 
         values = {
-            "Stock Cost": df["Stock Cost"].sum(),
+            "Total Cost": df["Total Cost"].sum(),
             "Stock Out Rate (%)": df["Stock Out Rate (%)"].mean(),
             "Alpha Service Level (%)": df["Alpha Service Level (%)"].mean(),
             "Beta Service Level (%)": df["Beta Service Level (%)"].mean(),
@@ -227,6 +299,9 @@ def build_global_kpi_comparison(abc_filter="Total SKUs"):
             {"KPI": k, "Policy": policy, "Value": round(v, 2)}
             for k, v in values.items()
         ]
+
+    if not rows:
+        return pd.DataFrame()
 
     pivot = pd.DataFrame(rows).pivot(
         index="KPI",
@@ -244,9 +319,13 @@ def build_global_kpi_comparison(abc_filter="Total SKUs"):
 
 
 def render_global_kpi_table(df):
-    header = "".join(f"<th>{c}</th>" for c in df.columns)
+    if df.empty:
+        st.warning("No global KPI data available for the selected filters.")
+        return
 
+    header = "".join(f"<th>{c}</th>" for c in df.columns)
     body = ""
+
     for _, row in df.iterrows():
         cells = "".join(
             f"<td>{row[c] if c == 'KPI' else f'{float(row[c]):.2f}'}</td>"
@@ -285,7 +364,7 @@ def render_monte_carlo_analysis():
     required_cols = [
         "Policy",
         "Simulation",
-        "Stock Cost",
+        "Total Cost",
         "Beta Service Level (%)",
         "Average Inventory Level"
     ]
@@ -297,7 +376,7 @@ def render_monte_carlo_analysis():
         return
 
     for col in [
-        "Stock Cost",
+        "Total Cost",
         "Stock Out Rate (%)",
         "Alpha Service Level (%)",
         "Beta Service Level (%)",
@@ -309,7 +388,7 @@ def render_monte_carlo_analysis():
 
     mc_df = mc_df.dropna(subset=[
         "Policy",
-        "Stock Cost",
+        "Total Cost",
         "Beta Service Level (%)",
         "Average Inventory Level"
     ])
@@ -321,16 +400,20 @@ def render_monte_carlo_analysis():
     summary_df = (
         mc_df.groupby("Policy", as_index=False)
         .agg(
-            stock_cost=("Stock Cost", "mean"),
-            beta_service_level=("Beta Service Level (%)", "mean"),
-            average_inventory_level=("Average Inventory Level", "mean"),
-            stock_coverage=("Stock Coverage (days)", "mean")
+            total_cost_mean=("Total Cost", "mean"),
+            total_cost_std=("Total Cost", "std"),
+            beta_service_level_mean=("Beta Service Level (%)", "mean"),
+            beta_service_level_std=("Beta Service Level (%)", "std"),
+            average_inventory_level_mean=("Average Inventory Level", "mean"),
+            average_inventory_level_std=("Average Inventory Level", "std"),
+            stock_coverage_mean=("Stock Coverage (days)", "mean"),
+            stock_coverage_std=("Stock Coverage (days)", "std")
         )
     )
 
-    summary_df["Inventory Score"] = score_lower(summary_df["average_inventory_level"])
-    summary_df["Cost Score"] = score_lower(summary_df["stock_cost"])
-    summary_df["Service Score"] = score_higher(summary_df["beta_service_level"])
+    summary_df["Inventory Score"] = score_lower(summary_df["average_inventory_level_mean"])
+    summary_df["Cost Score"] = score_lower(summary_df["total_cost_mean"])
+    summary_df["Service Score"] = score_higher(summary_df["beta_service_level_mean"])
 
     summary_df["Trade-off Score"] = summary_df[
         ["Inventory Score", "Cost Score", "Service Score"]
@@ -359,13 +442,11 @@ def render_monte_carlo_analysis():
             y="Beta Service Level (%)",
             color="Policy",
             symbol="Policy",
-            size="Stock Cost",
-            size_max=10,
             title="Monte Carlo Scenarios: Inventory vs Service Level",
             hover_data={
                 "Policy": True,
                 "Simulation": True,
-                "Stock Cost": ":,.2f",
+                "Total Cost": ":,.2f",
                 "Average Inventory Level": ":,.2f",
                 "Beta Service Level (%)": ":,.2f",
                 "Stock Coverage (days)": ":,.2f",
@@ -373,10 +454,8 @@ def render_monte_carlo_analysis():
         )
 
         fig.update_traces(
-            opacity=0.65,
-            marker=dict(
-                line=dict(width=0.5, color="white")
-            )
+            marker=dict(size=7, line=dict(width=0.5, color="white")),
+            opacity=0.60
         )
 
         fig.update_layout(
@@ -401,68 +480,99 @@ def render_monte_carlo_analysis():
 
     with col_right:
         st.markdown("### Monte Carlo Insights")
-
         st.info(
             f"**Best Trade-off:** {best_policy['Policy']}  \n\n"
-            f"Best average balance between inventory level, stock cost and β service level."
+            f"Best average balance between inventory level, total cost and β service level."
         )
 
-        cards = [
-            (
-                "Lowest Stock Cost",
-                summary_df.loc[summary_df["stock_cost"].idxmin()],
-                "stock_cost",
-                "Stock Cost",
-                "#061243"
-            ),
-            (
-                "Highest Service Level",
-                summary_df.loc[summary_df["beta_service_level"].idxmax()],
-                "beta_service_level",
-                "Beta Service Level (%)",
-                "#008080"
-            ),
-            (
-                "Lowest Inventory Level",
-                summary_df.loc[summary_df["average_inventory_level"].idxmin()],
-                "average_inventory_level",
-                "Average Inventory Level",
-                "#ff7f32"
-            ),
-        ]
+    st.markdown("### Monte Carlo Risk Distribution")
 
-        html = ""
+    box_col_1, box_col_2 = st.columns(2)
 
-        for title, row, metric_col, metric_label, color in cards:
-            suffix = "%" if metric_label == "Beta Service Level (%)" else ""
+    with box_col_1:
+        fig_cost = px.box(
+            mc_df,
+            x="Policy",
+            y="Total Cost",
+            color="Policy",
+            points="outliers",
+            title="Distribution of Total Cost by Policy"
+        )
 
-            html += f"""
-            <div style="
-                background:white;
-                padding:22px;
-                border-radius:14px;
-                border-left:6px solid {color};
-                margin-bottom:18px;
-                box-shadow:0 8px 20px rgba(6,18,67,.08);">
-                <h4 style="color:{color};">{title}</h4>
-                <p><b>{row['Policy']}</b></p>
-                <p>{metric_label}: {row[metric_col]:,.2f}{suffix}</p>
-            </div>
-            """
+        fig_cost.update_layout(
+            xaxis_title="Policy",
+            yaxis_title="Total Cost",
+            height=500,
+            showlegend=False,
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+            title_font=dict(size=20, color="#061243"),
+            font=dict(color="#061243")
+        )
 
-        st.markdown(html, unsafe_allow_html=True)
+        st.plotly_chart(fig_cost, use_container_width=True)
+
+    with box_col_2:
+        fig_service = px.box(
+            mc_df,
+            x="Policy",
+            y="Beta Service Level (%)",
+            color="Policy",
+            points="outliers",
+            title="Distribution of β Service Level by Policy"
+        )
+
+        fig_service.update_layout(
+            xaxis_title="Policy",
+            yaxis_title="β Service Level (%)",
+            height=500,
+            showlegend=False,
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+            title_font=dict(size=20, color="#061243"),
+            font=dict(color="#061243")
+        )
+
+        st.plotly_chart(fig_service, use_container_width=True)
+
+    with st.expander("Show Monte Carlo robustness summary"):
+        robustness_df = summary_df[[
+            "Policy",
+            "total_cost_mean",
+            "total_cost_std",
+            "beta_service_level_mean",
+            "beta_service_level_std",
+            "average_inventory_level_mean",
+            "average_inventory_level_std",
+            "stock_coverage_mean",
+            "stock_coverage_std",
+            "Trade-off Score"
+        ]].copy()
+
+        robustness_df = robustness_df.rename(columns={
+            "total_cost_mean": "Mean Total Cost",
+            "total_cost_std": "Std Total Cost",
+            "beta_service_level_mean": "Mean Beta Service Level (%)",
+            "beta_service_level_std": "Std Beta Service Level (%)",
+            "average_inventory_level_mean": "Mean Average Inventory Level",
+            "average_inventory_level_std": "Std Average Inventory Level",
+            "stock_coverage_mean": "Mean Stock Coverage (days)",
+            "stock_coverage_std": "Std Stock Coverage (days)",
+        })
+
+        robustness_df = robustness_df.round(2)
+        st.dataframe(robustness_df, use_container_width=True)
 
     with st.expander("Show Monte Carlo simulation results"):
         st.dataframe(mc_df, use_container_width=True)
 
 
 # ================= SIDEBAR =================
-
 st.sidebar.title("Filters")
 
 policy_name = st.sidebar.selectbox("Select Policy", list(POLICIES.keys()))
-simulation_file, kpis_file = POLICIES[policy_name]
 
+simulation_file, kpis_file = POLICIES[policy_name]
 simulation_path = os.path.join(FOLDER, simulation_file)
 kpis_path = os.path.join(FOLDER, kpis_file)
 
@@ -489,8 +599,58 @@ else:
 
 df = df.dropna(subset=["date"])
 
-# ================= SKU FILTER =================
+df["sku"] = df["sku"].astype(str)
+sku_kpis_all["sku"] = sku_kpis_all["sku"].astype(str)
 
+# ================= ABC / XYZ FILTERS =================
+asis_kpis_path = os.path.join(FOLDER, POLICIES["As Is"][1])
+classification_df = normalize_kpis(load_csv(asis_kpis_path))
+
+classification_df["sku"] = classification_df["sku"].astype(str)
+
+classification_df["ABC Class"] = (
+    classification_df["ABC Class"]
+    .astype(str)
+    .str.strip()
+    .str.upper()
+)
+
+classification_df["XYZ Class"] = (
+    classification_df["XYZ Class"]
+    .astype(str)
+    .str.strip()
+    .str.upper()
+)
+
+abc_options = ["Total SKUs"] + sorted(
+    classification_df["ABC Class"]
+    .dropna()
+    .loc[lambda s: ~s.isin(["", "NAN", "NONE"])]
+    .unique()
+    .tolist()
+)
+
+xyz_options = ["All XYZ"] + sorted(
+    classification_df["XYZ Class"]
+    .dropna()
+    .loc[lambda s: ~s.isin(["", "NAN", "NONE"])]
+    .unique()
+    .tolist()
+)
+
+abc_filter = st.sidebar.selectbox("ABC Classification", abc_options)
+xyz_filter = st.sidebar.selectbox("XYZ Classification", xyz_options)
+
+if abc_filter == "Total SKUs" and xyz_filter == "All XYZ":
+    filtered_skus = set(df["sku"].dropna().astype(str))
+else:
+    filtered_skus = get_filtered_skus_from_classification(
+        classification_df,
+        abc_filter,
+        xyz_filter
+    )
+
+# ================= SKU FILTER =================
 if policy_name == "As Is":
     optimized_sku_sets = []
 
@@ -512,17 +672,27 @@ if policy_name == "As Is":
 
     if optimized_sku_sets:
         valid_asis_skus = set.intersection(*optimized_sku_sets)
+
         available_skus = sorted(
-            set(df["sku"].dropna().astype(str)).intersection(valid_asis_skus)
+            set(df["sku"].dropna().astype(str))
+            .intersection(valid_asis_skus)
+            .intersection(filtered_skus)
         )
+
     else:
-        available_skus = sorted(df["sku"].dropna().astype(str).unique())
+        available_skus = sorted(
+            set(df["sku"].dropna().astype(str))
+            .intersection(filtered_skus)
+        )
 
 else:
-    available_skus = sorted(df["sku"].dropna().astype(str).unique())
+    available_skus = sorted(
+        set(df["sku"].dropna().astype(str))
+        .intersection(filtered_skus)
+    )
 
 if not available_skus:
-    st.error("No valid SKUs available for the selected policy.")
+    st.error("No valid SKUs available for the selected ABC/XYZ filters.")
     st.stop()
 
 selected_sku = st.sidebar.selectbox("Select SKU", available_skus)
@@ -531,7 +701,6 @@ sku_kpis = sku_kpis_all[sku_kpis_all["sku"] == selected_sku]
 sku_df = df[df["sku"] == selected_sku].sort_values("date")
 
 # ================= DASHBOARD =================
-
 st.markdown("""
 <style>
 div.stButton > button {
@@ -546,72 +715,22 @@ div.stButton > button {
     box-shadow: 0 8px 20px rgba(6,18,67,.18);
     transition: all 0.25s ease;
 }
-
 div.stButton > button:hover {
     transform: translateY(-3px);
     box-shadow: 0 12px 24px rgba(6,18,67,.28);
     background: linear-gradient(135deg, #008080 0%, #061243 100%);
     color: white;
 }
-
 div.stButton > button:focus {
     border: 2px solid #00b3b3 !important;
     color: white !important;
 }
-
 div.stButton > button[kind="primary"] {
     background: linear-gradient(135deg, #00a6a6 0%, #061243 100%);
     border: 2px solid #00d4d4;
 }
 </style>
 """, unsafe_allow_html=True)
-
-if "abc_filter" not in st.session_state:
-    st.session_state.abc_filter = "Total SKUs"
-
-st.markdown("""
-<h3 style="
-color:#061243;
-font-weight:900;
-margin-bottom:18px;
-margin-top:10px;">
-ABC Classification Filter
-</h3>
-""", unsafe_allow_html=True)
-
-b1, b2, b3, b4 = st.columns(4)
-
-with b1:
-    if st.button(
-        "📦 Total SKUs",
-        use_container_width=True,
-        type="primary" if st.session_state.abc_filter == "Total SKUs" else "secondary"
-    ):
-        st.session_state.abc_filter = "Total SKUs"
-
-with b2:
-    if st.button(
-        "🟢 Class A",
-        use_container_width=True,
-        type="primary" if st.session_state.abc_filter == "A" else "secondary"
-    ):
-        st.session_state.abc_filter = "A"
-
-with b3:
-    if st.button(
-        "🟡 Class B",
-        use_container_width=True,
-        type="primary" if st.session_state.abc_filter == "B" else "secondary"
-    ):
-        st.session_state.abc_filter = "B"
-
-with b4:
-    if st.button(
-        "🔴 Class C",
-        use_container_width=True,
-        type="primary" if st.session_state.abc_filter == "C" else "secondary"
-    ):
-        st.session_state.abc_filter = "C"
 
 st.markdown(
     f"""
@@ -626,26 +745,25 @@ st.markdown(
         color:#061243;
         font-weight:800;
         font-size:18px;">
-        Current View: <span style="color:#008080;">{st.session_state.abc_filter}</span>
+        Current View:
+        <span style="color:#008080;">ABC: {abc_filter} | XYZ: {xyz_filter}</span>
     </div>
     """,
     unsafe_allow_html=True
 )
 
-global_kpis_df = build_global_kpi_comparison(st.session_state.abc_filter)
-
+global_kpis_df = build_global_kpi_comparison(abc_filter, xyz_filter)
 render_global_kpi_table(global_kpis_df)
 
 st.subheader(f"SKU: {selected_sku} | Policy: {policy_name}")
 
 # ================= KPI CARDS =================
-
 if not sku_kpis.empty:
     row = sku_kpis.iloc[0]
     cols = st.columns(5)
 
     metrics = [
-        ("Stock Cost", ""),
+        ("Total Cost", ""),
         ("Stock Out Rate (%)", "%"),
         ("Alpha Service Level (%)", "%"),
         ("Beta Service Level (%)", "%"),
@@ -664,9 +782,7 @@ else:
     st.warning("No KPI data found for this SKU.")
 
 # ================= CHART =================
-
 if not sku_df.empty and {"date", "demand", "soh_final"}.issubset(sku_df.columns):
-
     chart_long = sku_df[["date", "demand", "soh_final"]].melt(
         id_vars="date",
         value_vars=["demand", "soh_final"],
@@ -685,17 +801,13 @@ if not sku_df.empty and {"date", "demand", "soh_final"}.issubset(sku_df.columns)
         y="Value",
         color="Metric",
         markers=False,
-        title="Demand vs Stock On Hand Over Time"
-        if policy_name == "As Is"
-        else "Demand vs SOH Final Over Time",
+        title="Demand vs Stock On Hand Over Time" if policy_name == "As Is" else "Demand vs SOH Final Over Time",
         color_discrete_sequence=["#008080", "#061243"]
     )
 
     fig.update_layout(
         xaxis_title="Date",
-        yaxis_title="Demand / Stock On Hand"
-        if policy_name == "As Is"
-        else "Demand / SOH Final",
+        yaxis_title="Demand / Stock On Hand" if policy_name == "As Is" else "Demand / SOH Final",
         legend_title="Metric",
         hovermode="x unified",
         paper_bgcolor="white",
@@ -710,7 +822,6 @@ else:
     st.info("No simulation time series available for this policy.")
 
 # ================= KPI TABLE =================
-
 st.subheader("KPI Table")
 
 if not sku_kpis.empty:
@@ -728,9 +839,7 @@ if not sku_kpis.empty:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ================= RAW DATA =================
-
 with st.expander("Show simulation data"):
-
     if not sku_df.empty:
         st.markdown(
             '<div class="chart-container"><div class="chart-frame-title">Simulation Raw Data</div>',
@@ -740,9 +849,9 @@ with st.expander("Show simulation data"):
         st.dataframe(sku_df, use_container_width=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
+
     else:
         st.info("No simulation data available for this policy.")
 
 # ================= MONTE CARLO ANALYSIS =================
-
 render_monte_carlo_analysis()
