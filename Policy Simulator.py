@@ -79,8 +79,8 @@ background:white !important;
 """, unsafe_allow_html=True)
 
 # ================= LOGOS =================
-LOGO_1 = r"C:\Users\anatd\Downloads\FIM\Uni_Logo.png"
-LOGO_2 = r"C:\Users\anatd\Downloads\FIM\LTP_Logo.png"
+LOGO_1 = "Uni_Logo.png"
+LOGO_2 = "LTP_Logo.png"
 
 st.markdown('<div class="dashboard-header">', unsafe_allow_html=True)
 c1, c2, c3 = st.columns([1, 1, 7])
@@ -93,7 +93,7 @@ c3.markdown("""
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ================= CONFIG =================
-FOLDER = r"C:\Users\anatd\Downloads\FIM\parquet_filtered"
+FOLDER = "."
 
 POLICIES = {
     "As Is": ("master_stock_forecast.parquet", "AsIsMetrics.csv"),
