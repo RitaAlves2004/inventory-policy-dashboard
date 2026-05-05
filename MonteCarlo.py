@@ -5,7 +5,7 @@ from collections import defaultdict
 
 # ========================= CONFIG =========================
 
-folder = r"C:\Users\anatd\Downloads\FIM\parquet_filtered"
+folder = "."
 
 N_SIMULATIONS = 100
 WACC = 0.02
