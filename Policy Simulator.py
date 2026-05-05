@@ -626,6 +626,14 @@ classification_df = normalize_kpis(load_csv(asis_kpis_path))
 
 classification_df["sku"] = classification_df["sku"].astype(str)
 
+# GARANTIR COLUNAS
+if "ABC Class" not in classification_df.columns:
+    classification_df["ABC Class"] = ""
+
+if "XYZ Class" not in classification_df.columns:
+    classification_df["XYZ Class"] = ""
+
+# NORMALIZAR
 classification_df["ABC Class"] = (
     classification_df["ABC Class"]
     .astype(str)
@@ -639,7 +647,6 @@ classification_df["XYZ Class"] = (
     .str.strip()
     .str.upper()
 )
-
 abc_options = ["Total SKUs"] + sorted(
     classification_df["ABC Class"]
     .dropna()
