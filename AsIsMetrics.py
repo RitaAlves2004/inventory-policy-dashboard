@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-folder = r"C:\Users\anatd\Downloads\FIM\parquet_filtered"
+folder = "."
 
 xyz_file = r"C:\Users\anatd\Downloads\FIM\parquet_filtered\xyz_file.xlsx"
 stock_file = "master_stock_forecast.parquet"
