@@ -6,7 +6,7 @@ from statistics import NormalDist
 
 # ========================= CONFIGURAÇÃO =========================
 
-folder = r"C:\Users\anatd\Downloads\FIM\parquet_filtered"
+folder = "."
 
 start_date = pd.Timestamp("2023-06-01")
 service_level_candidates = np.round(np.arange(0.60, 0.991, 0.01), 2)
