@@ -131,10 +131,18 @@ def normalize_kpis(df):
 
     rename_map = {
         "SKU": "sku",
+        "ABC": "ABC Class",
+        "abc": "ABC Class",
         "ABC_Class": "ABC Class",
-        "XYZ_Class": "XYZ Class",
-        "XYZ Class": "XYZ Class",
+        "abc_class": "ABC Class",
+        "ABC Class": "ABC Class",
 
+        "XYZ": "XYZ Class",
+        "xyz": "XYZ Class",
+        "XYZ_Class": "XYZ Class",
+        "xyz_class": "XYZ Class",
+        "XYZ Class": "XYZ Class",
+        
         "Total Cost": "Total Cost",
         "total_cost": "Total Cost",
         "Total_Cost": "Total Cost",
