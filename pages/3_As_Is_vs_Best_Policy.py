@@ -63,9 +63,9 @@ FOLDER = "."
 
 POLICIES = {
     "As Is": ("master_stock_forecast.parquet", "AsIsMetrics.csv"),
-    "Smin-Smax Policy": ("PolíticaSminSmáx.csv", "PolíticaSminSmáx_KPIs.csv"),
-    "Reorder Level Policy": ("PolíticaNívelDeEncomenda.csv", "PolíticaNívelDeEncomenda_KPIs.csv"),
-    "Order Cycle Policy": ("PolíticaCicloDeEncomenda.csv", "PolíticaCicloDeEncomenda_KPIs.csv"),
+    "Smin-Smax Policy": ("PolíticaSminSmáx.parquet", "PolíticaSminSmáx_KPIs.csv"),
+    "Reorder Level Policy": ("PolíticaNívelDeEncomenda.parquet", "PolíticaNívelDeEncomenda_KPIs.csv"),
+    "Order Cycle Policy": ("PolíticaCicloDeEncomenda.parquet", "PolíticaCicloDeEncomenda_KPIs.csv"),
 }
 
 KPI_ORDER = [
