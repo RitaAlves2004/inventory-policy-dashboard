@@ -146,6 +146,11 @@ def normalize_kpis(df):
         "Total Cost": "Total Cost",
         "total_cost": "Total Cost",
         "Total_Cost": "Total Cost",
+        "Stock Cost": "Stock Cost",
+        "Order Cost": "Order Cost",
+        "TotalCost": "Total Cost",
+        "Total_Cost": "Total Cost",
+        "total cost": "Total Cost",
 
         "Stockout Rate": "Stock Out Rate (%)",
         "Stockout Rate (%)": "Stock Out Rate (%)",
