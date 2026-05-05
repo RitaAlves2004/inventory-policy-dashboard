@@ -114,7 +114,9 @@ KPI_ORDER = [
 # ================= FUNCTIONS =================
 @st.cache_data
 def load_csv(path):
-    return pd.read_csv(path, sep=";", decimal=",", encoding="utf-8-sig")
+    df = pd.read_csv(path, sep=";", decimal=",", encoding="utf-8-sig")
+    df.columns = df.columns.str.strip()
+    return df
 
 
 @st.cache_data
@@ -125,6 +127,8 @@ def load_data(path):
 
 
 def normalize_kpis(df):
+    df.columns = df.columns.str.strip()
+
     rename_map = {
         "SKU": "sku",
         "ABC_Class": "ABC Class",
@@ -136,21 +140,27 @@ def normalize_kpis(df):
         "Total_Cost": "Total Cost",
 
         "Stockout Rate": "Stock Out Rate (%)",
+        "Stockout Rate (%)": "Stock Out Rate (%)",
+        "Stock Out Rate (%)": "Stock Out Rate (%)",
         "stock_out_rate_pct": "Stock Out Rate (%)",
         "stock_out_rate_%": "Stock Out Rate (%)",
         "stock_out_rate": "Stock Out Rate (%)",
 
         "Alpha Service Level": "Alpha Service Level (%)",
+        "Alpha Service Level (%)": "Alpha Service Level (%)",
         "alpha_service_level": "Alpha Service Level (%)",
         "alpha_service_level_%": "Alpha Service Level (%)",
 
         "Beta Service Level": "Beta Service Level (%)",
+        "Beta Service Level (%)": "Beta Service Level (%)",
         "beta_service_level": "Beta Service Level (%)",
         "beta_service_level_%": "Beta Service Level (%)",
 
+        "Average Inventory Level": "Average Inventory Level",
         "average_inventory_level": "Average Inventory Level",
         "average_inventory_level_quantidade": "Average Inventory Level",
 
+        "Stock Coverage (days)": "Stock Coverage (days)",
         "stock_coverage_days": "Stock Coverage (days)",
         "stock_coverage_dias": "Stock Coverage (days)",
     }
