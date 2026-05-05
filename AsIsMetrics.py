@@ -4,7 +4,7 @@ import numpy as np
 
 folder = "."
 
-xyz_file = r"C:\Users\anatd\Downloads\FIM\parquet_filtered\xyz_file.xlsx"
+xyz_file = "xyz_file.xlsx"
 stock_file = "master_stock_forecast.parquet"
 cost_file = "20260210_CustosProdutos.xlsx"
 abc_file = "Demand_ABC.xlsx"
