@@ -335,6 +335,218 @@ def load_policy_simulation(policy_name):
     return sim_df
 
 
+def get_common_skus():
+    common_skus = None
+
+    for policy, (sim_file, _) in POLICIES.items():
+        path = os.path.join(FOLDER, sim_file)
+
+        if not os.path.exists(path):
+            continue
+
+        if policy == "As Is":
+            temp = pd.read_parquet(path)["sku"].dropna().astype(str).unique()
+        else:
+            temp = load_data(path)["SKU"].dropna().astype(str).unique()
+
+        temp = set(temp)
+        common_skus = temp if common_skus is None else common_skus & temp
+
+    return common_skus if common_skus is not None else set()
+
+
+def get_segment_skus(abc_class, xyz_class):
+    asis_kpis_path = os.path.join(FOLDER, POLICIES["As Is"][1])
+
+    if not os.path.exists(asis_kpis_path):
+        return set()
+
+    asis_kpis = normalize_kpis(load_csv(asis_kpis_path))
+
+    required_cols = {"sku", "ABC Class", "XYZ Class"}
+
+    if not required_cols.issubset(asis_kpis.columns):
+        return set()
+
+    segment_df = asis_kpis[
+        (asis_kpis["ABC Class"].astype(str).str.upper().str.strip() == abc_class) &
+        (asis_kpis["XYZ Class"].astype(str).str.upper().str.strip() == xyz_class)
+    ]
+
+    return set(segment_df["sku"].dropna().astype(str))
+
+
+def build_kpi_comparison_for_skus(selected_skus):
+    rows = []
+    selected_skus = set(selected_skus)
+
+    if not selected_skus:
+        return pd.DataFrame()
+
+    for policy, (simulation_file, kpis_file) in POLICIES.items():
+        kpis_path = os.path.join(FOLDER, kpis_file)
+        simulation_path = os.path.join(FOLDER, simulation_file)
+
+        if not os.path.exists(kpis_path) or not os.path.exists(simulation_path):
+            continue
+
+        df = normalize_kpis(load_csv(kpis_path))
+
+        if "sku" not in df.columns:
+            continue
+
+        df["sku"] = df["sku"].astype(str)
+        df = df[df["sku"].isin(selected_skus)]
+
+        if df.empty:
+            continue
+
+        if policy == "As Is":
+            sim_df = pd.read_parquet(simulation_path).rename(columns={
+                "stock_on_hand": "SOH End",
+                "demand": "Demand",
+                "date": "Date",
+                "sku": "sku"
+            })
+
+            sim_df["Date"] = pd.to_datetime(
+                sim_df["Date"].astype(str),
+                format="%Y%m%d",
+                errors="coerce"
+            )
+
+            sim_df = sim_df[sim_df["Date"] >= pd.Timestamp("2023-06-01")]
+
+        else:
+            sim_df = load_data(simulation_path).rename(columns={
+                "SKU": "sku",
+                "Demand": "Demand",
+                "SOH End": "SOH End",
+                "Date": "Date"
+            })
+
+            sim_df["Date"] = pd.to_datetime(
+                sim_df["Date"],
+                dayfirst=True,
+                errors="coerce"
+            )
+
+        sim_df["sku"] = sim_df["sku"].astype(str)
+        sim_df = sim_df[sim_df["sku"].isin(selected_skus)]
+
+        total_soh = sim_df["SOH End"].sum()
+        total_demand = sim_df["Demand"].sum()
+
+        global_stock_coverage = total_soh / total_demand if total_demand > 0 else 0
+
+        values = {
+            "Total Cost": df["Total Cost"].sum(),
+            "Stock Out Rate (%)": df["Stock Out Rate (%)"].mean(),
+            "Alpha Service Level (%)": df["Alpha Service Level (%)"].mean(),
+            "Beta Service Level (%)": df["Beta Service Level (%)"].mean(),
+            "Average Inventory Level": df["Average Inventory Level"].mean(),
+            "Stock Coverage (days)": global_stock_coverage,
+        }
+
+        rows += [
+            {"KPI": k, "Policy": policy, "Value": round(v, 2)}
+            for k, v in values.items()
+        ]
+
+    if not rows:
+        return pd.DataFrame()
+
+    pivot = pd.DataFrame(rows).pivot(
+        index="KPI",
+        columns="Policy",
+        values="Value"
+    ).reset_index()
+
+    pivot["KPI"] = pd.Categorical(
+        pivot["KPI"],
+        categories=KPI_ORDER,
+        ordered=True
+    )
+
+    return pivot.sort_values("KPI")
+
+def get_best_policy_by_segment(global_kpis_df, abc_class):
+    if global_kpis_df.empty:
+        return None
+
+    df = global_kpis_df.copy().set_index("KPI")
+    policies = [c for c in df.columns if c != "As Is"]
+
+    if not policies:
+        return None
+
+    score_df = pd.DataFrame(index=policies)
+
+    score_df["Total Cost"] = [df.loc["Total Cost", p] for p in policies]
+    score_df["Beta Service Level (%)"] = [df.loc["Beta Service Level (%)", p] for p in policies]
+    score_df["Average Inventory Level"] = [df.loc["Average Inventory Level", p] for p in policies]
+
+    score_df["Cost Score"] = score_lower(score_df["Total Cost"])
+    score_df["Inventory Score"] = score_lower(score_df["Average Inventory Level"])
+    score_df["Service Score"] = score_higher(score_df["Beta Service Level (%)"])
+
+    if abc_class == "A":
+        service_weight = 0.50
+        cost_weight = 0.30
+        inventory_weight = 0.20
+    elif abc_class == "B":
+        service_weight = 0.40
+        cost_weight = 0.35
+        inventory_weight = 0.25
+    else:
+        service_weight = 0.30
+        cost_weight = 0.40
+        inventory_weight = 0.30
+
+    score_df["Trade-off Score"] = (
+        cost_weight * score_df["Cost Score"] +
+        inventory_weight * score_df["Inventory Score"] +
+        service_weight * score_df["Service Score"]
+    )
+
+    return score_df["Trade-off Score"].idxmax(), score_df.round(4)
+
+def build_best_policy_by_abc_xyz():
+    rows = []
+    common_skus = get_common_skus()
+
+    for abc_class in ["A", "B", "C"]:
+        for xyz_class in ["X", "Y", "Z"]:
+            segment_skus = get_segment_skus(abc_class, xyz_class)
+            segment_skus = segment_skus & common_skus
+
+            if not segment_skus:
+                continue
+
+            segment_kpis = build_kpi_comparison_for_skus(segment_skus)
+
+            if segment_kpis.empty:
+                continue
+
+            best_policy_result = get_best_policy_by_segment(segment_kpis, abc_class)
+
+            if best_policy_result is None:
+                continue
+
+            segment_best_policy, segment_score_df = best_policy_result
+
+            rows.append({
+                "ABC Class": abc_class,
+                "XYZ Class": xyz_class,
+                "ABC-XYZ Segment": f"{abc_class}-{xyz_class}",
+                "Best Policy": segment_best_policy,
+                "SKUs": len(segment_skus),
+                "Trade-off Score": segment_score_df.loc[segment_best_policy, "Trade-off Score"]
+            })
+
+    return pd.DataFrame(rows)
+
+
 # ================= PAGE =================
 global_kpis_df = build_global_kpi_comparison()
 
@@ -359,12 +571,60 @@ render_global_kpi_table(
     title=f"Global KPI Comparison: As Is vs {best_policy}"
 )
 
+# ================= BEST POLICY BY ABC-XYZ TABLE =================
+segment_best_df = build_best_policy_by_abc_xyz()
+
+st.markdown("### Best Policy by ABC-XYZ Category")
+
+if segment_best_df.empty:
+    st.warning("No ABC-XYZ segment data available.")
+else:
+    st.dataframe(
+    segment_best_df[
+        ["ABC Class", "XYZ Class", "ABC-XYZ Segment", "Best Policy", "SKUs", "Trade-off Score"]
+    ].reset_index(drop=True),
+    use_container_width=True,
+    hide_index=True
+)
+
+# ================= CHART FILTER =================
+chart_scope = "Global"
+
+if not segment_best_df.empty:
+    segment_options = ["Global"] + segment_best_df["ABC-XYZ Segment"].tolist()
+
+    chart_scope = st.selectbox(
+        "Select ABC-XYZ category for chart",
+        segment_options
+    )
+
 # ================= LOAD SIMULATION DATA =================
+if chart_scope == "Global":
+    chart_best_policy = best_policy
+    chart_skus = None
+    chart_title_suffix = f"As Is vs {chart_best_policy}"
+else:
+    selected_segment = segment_best_df[
+        segment_best_df["ABC-XYZ Segment"] == chart_scope
+    ].iloc[0]
+
+    selected_abc = selected_segment["ABC Class"]
+    selected_xyz = selected_segment["XYZ Class"]
+    chart_best_policy = selected_segment["Best Policy"]
+
+    chart_skus = get_segment_skus(selected_abc, selected_xyz)
+    chart_skus = chart_skus & get_common_skus()
+
+    chart_title_suffix = f"{chart_scope} | As Is vs {chart_best_policy}"
+
 asis_sim = load_policy_simulation("As Is")
-best_sim = load_policy_simulation(best_policy)
+best_sim = load_policy_simulation(chart_best_policy)
 
 # Keep only SKUs common to both policies
 common_skus = set(asis_sim["sku"].dropna().astype(str)) & set(best_sim["sku"].dropna().astype(str))
+
+if chart_skus is not None:
+    common_skus = common_skus & chart_skus
 
 asis_sim = asis_sim[asis_sim["sku"].isin(common_skus)]
 best_sim = best_sim[best_sim["sku"].isin(common_skus)]
@@ -389,7 +649,7 @@ best_total_df = (
 )
 
 asis_total_df["Policy"] = "As Is"
-best_total_df["Policy"] = best_policy
+best_total_df["Policy"] = chart_best_policy
 
 comparison_df = pd.concat(
     [asis_total_df, best_total_df],
@@ -416,7 +676,7 @@ best_stock_df = (
     .rename(columns={"soh_final": "Value"})
 )
 
-best_stock_df["Metric"] = f"Stock On Hand - {best_policy}"
+best_stock_df["Metric"] = f"Stock On Hand - {chart_best_policy}"
 
 chart_long = pd.concat(
     [demand_df, asis_stock_df, best_stock_df],
@@ -429,7 +689,7 @@ fig = px.line(
     y="Value",
     color="Metric",
     markers=False,
-    title=f"Total Demand vs Total Stock On Hand Over Time | As Is vs {best_policy}",
+    title=f"Total Demand vs Total Stock On Hand Over Time | {chart_title_suffix}",
     color_discrete_sequence=[
         "#008080",
         "#061243",
@@ -454,7 +714,3 @@ st.plotly_chart(fig, use_container_width=True)
 # ================= SCORE TABLE =================
 with st.expander("Show best policy score calculation"):
     st.dataframe(score_df, use_container_width=True)
-
-# ================= RAW DATA =================
-with st.expander("Show global comparison raw data"):
-    st.dataframe(comparison_df, use_container_width=True)
