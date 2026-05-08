@@ -374,6 +374,51 @@ def score_lower(s):
 def score_higher(s):
     return pd.Series([1] * len(s), index=s.index) if s.max() == s.min() else (s - s.min()) / (s.max() - s.min())
 
+def render_monte_carlo_analysis():
+    mc_path = os.path.join(FOLDER, "MonteCarlo_LeadTime_AllPolicies.csv")
+
+    if not os.path.exists(mc_path):
+        st.warning(f"Monte Carlo file not found: {mc_path}")
+        return
+
+    mc_df = load_csv(mc_path)
+
+    required_cols = [
+        "Policy",
+        "Simulation",
+        "Total Cost",
+        "Beta Service Level (%)",
+        "Average Inventory Level"
+    ]
+
+    missing_cols = [c for c in required_cols if c not in mc_df.columns]
+
+    if missing_cols:
+        st.error("Missing Monte Carlo columns: " + ", ".join(missing_cols))
+        return
+
+    for col in [
+        "Total Cost",
+        "Stock Out Rate (%)",
+        "Alpha Service Level (%)",
+        "Beta Service Level (%)",
+        "Average Inventory Level",
+        "Stock Coverage (days)"
+    ]:
+        if col in mc_df.columns:
+            mc_df[col] = pd.to_numeric(mc_df[col], errors="coerce")
+
+    mc_df = mc_df.dropna(subset=[
+        "Policy",
+        "Total Cost",
+        "Beta Service Level (%)",
+        "Average Inventory Level"
+    ])
+
+    if mc_df.empty:
+        st.warning("Monte Carlo file has no valid data.")
+        return
+
     summary_df = (
         mc_df.groupby("Policy", as_index=False)
         .agg(
@@ -837,3 +882,5 @@ with st.expander("Show simulation data"):
     else:
         st.info("No simulation data available for this policy.")
 
+# ================= MONTE CARLO ANALYSIS =================
+render_monte_carlo_analysis()
